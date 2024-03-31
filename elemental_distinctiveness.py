@@ -1,7 +1,7 @@
-from qiskit import QuantumCircuit, Aer, transpile, assemble
-import numpy as np
 import warnings
+import numpy as np
 from tqdm import tqdm
+from qiskit import QuantumCircuit, Aer, transpile, assemble
 # suppress the warnings
 warnings.filterwarnings("ignore")
 
