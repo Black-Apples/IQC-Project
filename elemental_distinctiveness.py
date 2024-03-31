@@ -1,9 +1,13 @@
 from qiskit import QuantumCircuit, Aer, transpile, assemble
 import numpy as np
 import warnings
+
 # suppress the warnings
 warnings.filterwarnings("ignore")
 
+ARRAY_SIZE:int = 100
+NUM_SHOTS:int = 1
+TEST_ITERATIONS:int = 100
 
 def grover_iterator(oracle,N)->QuantumCircuit:
     """Implement the Grover's iterator to solve the problem"""
@@ -29,7 +33,8 @@ def A(n)->QuantumCircuit:
     qc.barrier()
     return qc
 
-def oracle(n, solution_indices):
+def oracle(n, solution_indices)->QuantumCircuit:
+    """Implement the oracle for the element distinctness problem"""
     oracle = QuantumCircuit(n)
 
     oracle.barrier()
@@ -79,7 +84,7 @@ def grover_algorithm(n, k, A_circuit, grover_circuit):
     # Running the circuit
     qasm_simulator = Aer.get_backend("qasm_simulator")
     transpiled_circuit = transpile(circuit, qasm_simulator)
-    qobj = assemble(transpiled_circuit, shots=1)
+    qobj = assemble(transpiled_circuit, shots=NUM_SHOTS)
     result = qasm_simulator.run(qobj).result()
     counts = result.get_counts()
     # print(counts)
@@ -87,66 +92,71 @@ def grover_algorithm(n, k, A_circuit, grover_circuit):
     # Return the most probable state
     return max(counts, key=counts.get)
 
-# Change this to define the array
-N:int = 100
-array=np.random.randint(N*2, size=N)
-N:int = len(array)
-np.random.shuffle(array)
-# array = np.array([5, 7, 2, 2, 1, 3, 9, 9, 0, 7])
-print(f"Initial Array: {array}")
+def simulate_test()->(bool, int):
+    """Simulate the test for the element distinctness problem"""
+    # print("Running the test for the element distinctness problem")
+    array=np.random.randint(2*ARRAY_SIZE, size=ARRAY_SIZE)
+    N:int = len(array)
+    np.random.shuffle(array)
+    # print(f"Initial Array: {array}")
 
-# Pick random sqrt(N) elements
-RootN:int = int(np.sqrt(N))
-marked = array[:RootN]
-print(f"Marked elements: {marked}")
-if(len(set(marked))!=len(marked)):
-    print("Marked elements are not unique, found duplicates")
-    exit()
+    # Pick random sqrt(N) elements
+    RootN:int = int(np.sqrt(N))
+    marked = array[:RootN]
+    # print(f"Marked elements: {marked}")
+    if(len(set(marked))!=len(marked)):
+        # print("Marked elements are not unique, found duplicates")
+        return False, 0
 
-# Adding a dummy element to index 0
-remaining = array[RootN:]
-# remaining.extend()
-print(f"Remaining elements: {remaining}")
-T:int = len(remaining)
-logT:int = int(np.ceil(np.log2(T)))
+    # Adding a dummy element to index 0
+    remaining = array[RootN:]
+    # print(f"Remaining elements: {remaining}")
+    T:int = len(remaining)
+    logT:int = int(np.ceil(np.log2(T)))
 
-# Creating the oracle using the dupicates
-solution_idx:list[int] = []
-for i in marked:
-    for j in range(len(remaining)):
-        if i==remaining[j]:
-            solution_idx.append(j)
-print(f"Solution Index: {solution_idx}")
-oracle_circuit:QuantumCircuit = oracle(logT+1, solution_idx)
+    # Creating the oracle using the dupicates
+    solution_idx:list[int] = []
+    for i in marked:
+        for j in range(len(remaining)):
+            if i==remaining[j]:
+                solution_idx.append(j)
+    oracle_circuit:QuantumCircuit = oracle(logT+1, solution_idx)
 
-grover:QuantumCircuit = grover_iterator(oracle_circuit,logT+1)
-A_circuit:QuantumCircuit = A(logT+1)
+    grover:QuantumCircuit = grover_iterator(oracle_circuit,logT+1)
+    A_circuit:QuantumCircuit = A(logT+1)
 
-# Running the Grover's algorithm for unknown theta
-lambda_:int = 1.2
-m:int = 2
-no_of_calls=0
-for _ in range(int(np.ceil(np.sqrt(N)))):
-    k:int = np.random.randint(1, m)
-    no_of_calls+=k
-    result = grover_algorithm(logT, k, A_circuit, grover)
-    print(f"Duplicate Index returned: {result}")
-    result_idx = int(result, 2)
-    try:
-        print(f"Duplicate element: {remaining[result_idx]}")
-        if remaining[result_idx] in marked:
+    # Running the Grover's algorithm for unknown theta
+    lambda_:int = 1.2
+    m:int = 2
+    no_of_calls:int = 0
+    for _ in range(int(np.ceil(np.sqrt(N)))):
+        k:int = np.random.randint(1, m)
+        no_of_calls+=k
+        result = grover_algorithm(logT, k, A_circuit, grover)
+        # print(f"Duplicate Index returned: {result}")
+        result_idx = int(result, 2)
+        try:
+            # print(f"Duplicate element: {remaining[result_idx]}")
+            if remaining[result_idx] in marked:
 
-            print(f"Duplicate element is correct, elements in the array are not distinct")
-            print(f"Number of calls made to the oracle: {no_of_calls}")
+                # print(f"Duplicate element is correct, elements in the array are not distinct")
+                # print(f"Number of calls made to the oracle: {no_of_calls}")
+                return False, no_of_calls
+                
+        except IndexError:
+            # print(f"Index out of bound",end=" ")
+            pass
 
-            exit()
-    except IndexError:
-        print(f"Index out of bound",end=" ")
+        except Exception as e:
+            raise e
+        # print(f"Duplicate element is incorrect")
+        m = lambda_ * m
 
-    except Exception as e:
-        raise e
-    print(f"Duplicate element is incorrect")
-    m = lambda_ * m
+    return True, no_of_calls
 
-print(f"Number of calls made to the oracle: {no_of_calls}")
-print("All elements in the array are distinct")
+if __name__ == "__main__":
+    num_calls:list[int] = []
+    for _ in range(TEST_ITERATIONS):
+        result, calls = simulate_test()
+        num_calls.append(calls)
+    print(f"Average number of calls made to the oracle: {np.mean(num_calls)}")
