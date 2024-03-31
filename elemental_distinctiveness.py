@@ -1,13 +1,13 @@
 from qiskit import QuantumCircuit, Aer, transpile, assemble
 import numpy as np
 import warnings
-
+from tqdm import tqdm
 # suppress the warnings
 warnings.filterwarnings("ignore")
 
 ARRAY_SIZE:int = 100
 NUM_SHOTS:int = 1
-TEST_ITERATIONS:int = 100
+TEST_ITERATIONS:int = 1000
 
 def grover_iterator(oracle,N)->QuantumCircuit:
     """Implement the Grover's iterator to solve the problem"""
@@ -95,7 +95,7 @@ def grover_algorithm(n, k, A_circuit, grover_circuit):
 def simulate_test()->(bool, int):
     """Simulate the test for the element distinctness problem"""
     # print("Running the test for the element distinctness problem")
-    array=np.random.randint(2*ARRAY_SIZE, size=ARRAY_SIZE)
+    array=np.random.randint(ARRAY_SIZE**2, size=ARRAY_SIZE)
     N:int = len(array)
     np.random.shuffle(array)
     # print(f"Initial Array: {array}")
@@ -103,10 +103,11 @@ def simulate_test()->(bool, int):
     # Pick random sqrt(N) elements
     RootN:int = int(np.sqrt(N))
     marked = array[:RootN]
+    no_of_calls:int = RootN
     # print(f"Marked elements: {marked}")
     if(len(set(marked))!=len(marked)):
         # print("Marked elements are not unique, found duplicates")
-        return False, 0
+        return False, no_of_calls
 
     # Adding a dummy element to index 0
     remaining = array[RootN:]
@@ -128,7 +129,6 @@ def simulate_test()->(bool, int):
     # Running the Grover's algorithm for unknown theta
     lambda_:int = 1.2
     m:int = 2
-    no_of_calls:int = 0
     for _ in range(int(np.ceil(np.sqrt(N)))):
         k:int = np.random.randint(1, m)
         no_of_calls+=k
@@ -141,7 +141,7 @@ def simulate_test()->(bool, int):
 
                 # print(f"Duplicate element is correct, elements in the array are not distinct")
                 # print(f"Number of calls made to the oracle: {no_of_calls}")
-                return False, no_of_calls
+                return True, no_of_calls
                 
         except IndexError:
             # print(f"Index out of bound",end=" ")
@@ -152,11 +152,13 @@ def simulate_test()->(bool, int):
         # print(f"Duplicate element is incorrect")
         m = lambda_ * m
 
-    return True, no_of_calls
+    return False, no_of_calls
 
 if __name__ == "__main__":
     num_calls:list[int] = []
-    for _ in range(TEST_ITERATIONS):
+    for _ in tqdm(range(TEST_ITERATIONS), desc="Running test iterations"):
         result, calls = simulate_test()
         num_calls.append(calls)
     print(f"Average number of calls made to the oracle: {np.mean(num_calls)}")
+    #  n**3/4
+    print(f"Expected number of calls made to the oracle: {ARRAY_SIZE**(3/4)}")
