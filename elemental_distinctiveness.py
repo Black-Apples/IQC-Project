@@ -31,10 +31,10 @@ def oracle(n, solution_indices)->QuantumCircuit:
     oracle.barrier()
     for idx in solution_indices:
         # cnot on binary representation of idx
-        control_list=[]
-        cl=[]
-        target=n-1
-        ele=idx
+        control_list = []
+        cl = []
+        target = n - 1
+        ele = idx
         while(ele>0):
             cl.append(ele%2)
             ele=ele//2
@@ -46,7 +46,7 @@ def oracle(n, solution_indices)->QuantumCircuit:
                 control_list.append(i)
         
         control_list=[target-1-i for i in control_list]
-        # print(idx,"control: ",control_list)
+        print(idx,"control: ",control_list)
         
         oracle.h(target)
         oracle.mcx(control_list,target) 
@@ -87,7 +87,7 @@ def grover_algorithm(n, k, A_circuit, grover_circuit):
 array=np.random.randint(10, size=10)
 N:int = len(array)
 np.random.shuffle(array)
-# array = np.array([5, 7, 2, 2, 1, 3, 9, 9, 0, 7])
+array = np.array([5, 7, 2, 2, 1, 3, 9, 9, 0, 7])
 print(f"Initial Array: {array}")
 
 # Pick random sqrt(N) elements
@@ -98,7 +98,10 @@ if(len(set(marked))!=len(marked)):
     print("Marked elements are not unique, found duplicates")
     exit()
 
-remaining = array[RootN:]
+# Adding a dummy element to index 0
+remaining = [int(1e9)]
+remaining.extend(array[RootN:])
+print(f"Remaining elements: {remaining}")
 T:int = len(remaining)
 logT:int = int(np.ceil(np.log2(T)))
 
@@ -108,6 +111,7 @@ for i in marked:
     for j in range(len(remaining)):
         if i==remaining[j]:
             solution_idx.append(j)
+print(f"Solution Index: {solution_idx}")
 oracle_circuit:QuantumCircuit = oracle(logT+1, solution_idx)
 
 grover:QuantumCircuit = grover_iterator(oracle_circuit,logT+1)
@@ -122,6 +126,7 @@ for _ in range(int(np.ceil(np.sqrt(N)))):
     print(f"Duplicate Index returned: {result}")
     result_idx = int(result, 2)
     try:
+        print(f"Duplicate element: {remaining[result_idx]}")
         if remaining[result_idx] in marked:
             print(f"Duplicate element is correct, elements in the array are not distinct")
             exit()
