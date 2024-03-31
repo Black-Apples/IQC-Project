@@ -1,5 +1,9 @@
 from qiskit import QuantumCircuit, Aer, transpile, assemble
 import numpy as np
+import warnings
+# suppress the warnings
+warnings.filterwarnings("ignore")
+
 
 def grover_iterator(oracle,N)->QuantumCircuit:
     """Implement the Grover's iterator to solve the problem"""
@@ -25,35 +29,35 @@ def A(n)->QuantumCircuit:
     qc.barrier()
     return qc
 
-def oracle(n, solution_indices)->QuantumCircuit:
-    """Implement the oracle required for the Grover's algorithm in element distinctness problem"""
+def oracle(n, solution_indices):
     oracle = QuantumCircuit(n)
-    oracle.barrier()
-    for idx in solution_indices:
-        # cnot on binary representation of idx
-        control_list = []
-        cl = []
-        target = n - 1
-        ele = idx
-        while(ele>0):
-            cl.append(ele%2)
-            ele=ele//2
-        # cl.reverse()
-        # print(cl)
-        
-        for i in range(len(cl)):
-            if(cl[i]==1):
-                control_list.append(i)
-        
-        control_list=[target-1-i for i in control_list]
-        print(idx,"control: ",control_list)
-        
-        oracle.h(target)
-        oracle.mcx(control_list,target) 
-        oracle.h(target)
 
     oracle.barrier()
-    # print("oracle circuit:")
+    for idx in solution_indices:
+        # Convert idx to binary representation
+        binary_rep = bin(idx)[2:].zfill(n-1)
+        
+        # print(binary_rep)
+        # reverse the binary representation
+        binary_rep = binary_rep[::-1]
+        # Apply X gates on qubits where binary_rep is '1'
+        for i, bit in enumerate(binary_rep):
+            if bit == '0':
+                oracle.x(i)
+
+        # Apply multi-controlled X gate
+        oracle.h(n-1)
+        oracle.mcx(list(range(n-1)), n-1)
+        oracle.h(n-1)
+        # Unapply X gates
+        for i, bit in enumerate(binary_rep):
+            if bit == '0':
+                oracle.x(i)
+        
+        oracle.barrier()
+
+    # oracle.barrier()
+    # print("Oracle circuit:")
     # print(oracle)
     return oracle
 
@@ -75,7 +79,7 @@ def grover_algorithm(n, k, A_circuit, grover_circuit):
     # Running the circuit
     qasm_simulator = Aer.get_backend("qasm_simulator")
     transpiled_circuit = transpile(circuit, qasm_simulator)
-    qobj = assemble(transpiled_circuit)
+    qobj = assemble(transpiled_circuit, shots=1)
     result = qasm_simulator.run(qobj).result()
     counts = result.get_counts()
     # print(counts)
@@ -84,10 +88,11 @@ def grover_algorithm(n, k, A_circuit, grover_circuit):
     return max(counts, key=counts.get)
 
 # Change this to define the array
-array=np.random.randint(10, size=10)
+N:int = 100
+array=np.random.randint(N*2, size=N)
 N:int = len(array)
 np.random.shuffle(array)
-array = np.array([5, 7, 2, 2, 1, 3, 9, 9, 0, 7])
+# array = np.array([5, 7, 2, 2, 1, 3, 9, 9, 0, 7])
 print(f"Initial Array: {array}")
 
 # Pick random sqrt(N) elements
@@ -99,8 +104,8 @@ if(len(set(marked))!=len(marked)):
     exit()
 
 # Adding a dummy element to index 0
-remaining = [int(1e9)]
-remaining.extend(array[RootN:])
+remaining = array[RootN:]
+# remaining.extend()
 print(f"Remaining elements: {remaining}")
 T:int = len(remaining)
 logT:int = int(np.ceil(np.log2(T)))
@@ -118,23 +123,30 @@ grover:QuantumCircuit = grover_iterator(oracle_circuit,logT+1)
 A_circuit:QuantumCircuit = A(logT+1)
 
 # Running the Grover's algorithm for unknown theta
-lambda_:int = 2
-m:int = 1
+lambda_:int = 1.2
+m:int = 2
+no_of_calls=0
 for _ in range(int(np.ceil(np.sqrt(N)))):
-    k:int = np.random.randint(0, m)
+    k:int = np.random.randint(1, m)
+    no_of_calls+=k
     result = grover_algorithm(logT, k, A_circuit, grover)
     print(f"Duplicate Index returned: {result}")
     result_idx = int(result, 2)
     try:
         print(f"Duplicate element: {remaining[result_idx]}")
         if remaining[result_idx] in marked:
+
             print(f"Duplicate element is correct, elements in the array are not distinct")
+            print(f"Number of calls made to the oracle: {no_of_calls}")
+
             exit()
     except IndexError:
-        print(f"Duplicate element is incorrect")
+        print(f"Index out of bound",end=" ")
+
     except Exception as e:
         raise e
     print(f"Duplicate element is incorrect")
     m = lambda_ * m
 
+print(f"Number of calls made to the oracle: {no_of_calls}")
 print("All elements in the array are distinct")
