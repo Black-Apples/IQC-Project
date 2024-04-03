@@ -129,9 +129,11 @@ def simulate_test()->(bool, int):
     # Running the Grover's algorithm for unknown theta
     lambda_:int = 1.2
     m:int = 2
+    no_of_loops:int = 0
     for _ in range(int(np.ceil(np.sqrt(N)))):
+        no_of_loops += 1
         k:int = np.random.randint(1, m)
-        no_of_calls+=k
+        no_of_calls += k*NUM_SHOTS
         result = grover_algorithm(logT, k, A_circuit, grover)
         # print(f"Duplicate Index returned: {result}")
         result_idx = int(result, 2)
@@ -156,9 +158,13 @@ def simulate_test()->(bool, int):
 
 if __name__ == "__main__":
     num_calls:list[int] = []
+    duplicate_array_cnt:int = 0
     for _ in tqdm(range(TEST_ITERATIONS), desc="Running test iterations"):
         result, calls = simulate_test()
         num_calls.append(calls)
+        if result:
+            duplicate_array_cnt += 1
+
+    print(f"Number of duplicate arrays found: {duplicate_array_cnt}")
     print(f"Average number of calls made to the oracle: {np.mean(num_calls)}")
-    #  n**3/4
-    print(f"Expected number of calls made to the oracle: {ARRAY_SIZE**(3/4)}")
+    
