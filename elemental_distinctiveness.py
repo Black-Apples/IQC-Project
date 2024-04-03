@@ -8,7 +8,7 @@ warnings.filterwarnings("ignore")
 ARRAY_SIZE:int = 100
 MAX_ELEMENT:int = ARRAY_SIZE # As per the problem statement in the paper
 NUM_SHOTS:int = 1
-TEST_ITERATIONS:int = 100
+TEST_ITERATIONS:int = 1000
 
 def grover_iterator(oracle_circuit,idx_qubits,qubits)->QuantumCircuit:
     """Implement the Grover's iterator to solve the problem"""
