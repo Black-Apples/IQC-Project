@@ -3,18 +3,17 @@ import numpy as np
 from tqdm import tqdm
 from qiskit import QuantumCircuit, Aer, transpile, assemble
 # suppress the warnings
-warnings.filterwarnings("ignore")
+# warnings.filterwarnings("ignore")
 
-ARRAY_SIZE:int = 100
-MAX_ELEMENT:int = ARRAY_SIZE # As per the problem statement in the paper
+ARRAY_SIZE:int = 1000
+MAX_ELEMENT:int = ARRAY_SIZE        # As per the problem statement in the paper
 NUM_SHOTS:int = 1
-TEST_ITERATIONS:int = 100
+TEST_ITERATIONS:int = 1
 
 def grover_iterator(oracle_circuit,idx_qubits,qubits)->QuantumCircuit:
     """Implement the Grover's iterator to solve the problem"""
-    qc=QuantumCircuit(qubits)
+    qc = QuantumCircuit(qubits)
     qc.append(oracle_circuit,range(qubits))
-    # qc.barrier()
     qc.h(range(idx_qubits))
     qc.h(qubits-1)
     qc.x(range(idx_qubits))
@@ -49,7 +48,6 @@ def Array_oracle(idx_qubits,oracle_qubits,Array)->QuantumCircuit:
     for element in idx:
         # Convert idx to binary representation
         binary_rep_idx = bin(element)[2:].zfill(idx_qubits)
-        # print(binary_rep_idx)
 
         # reverse the binary representation
         binary_rep_idx = binary_rep_idx[::-1]
@@ -60,18 +58,16 @@ def Array_oracle(idx_qubits,oracle_qubits,Array)->QuantumCircuit:
                 oracle.x(i)
 
         # Apply multi-controlled X gate to create elements of array
-        if(element>=array_len):
-            number=0
+        if element >= array_len:
+            number = 0
         else:
             number=Array[element]
         binary_rep_number = bin(number)[2:].zfill(oracle_qubits)
         binary_rep_number = binary_rep_number[::-1]
-        # print(binary_rep_number,number,binary_rep_idx,element)
-        # print(binary_rep_number)
+        
         for i, bit in enumerate(binary_rep_number):
             if bit == '1':
                 oracle.mcx(list(range(0,idx_qubits)), idx_qubits+i)
-        # oracle.mcx(list(range(0,idx_qubits)), idx_qubits+1)
 
         # Unapply X gates
         for i, bit in enumerate(binary_rep_idx):
@@ -81,11 +77,9 @@ def Array_oracle(idx_qubits,oracle_qubits,Array)->QuantumCircuit:
         oracle.barrier()
 
     oracle.barrier()
-    # print("Array Oracle circuit:")
-    # print(oracle)
     return oracle
 
-def comparision_oracle(idx_qubits, oracale_qubits,marked_elements):
+def comparision_oracle(idx_qubits, oracale_qubits,marked_elements)->QuantumCircuit:
     oracle = QuantumCircuit(idx_qubits+oracale_qubits)
 
     oracle.barrier()
@@ -93,7 +87,6 @@ def comparision_oracle(idx_qubits, oracale_qubits,marked_elements):
         # Convert idx to binary representation
         binary_rep = bin(element)[2:].zfill(oracale_qubits-1)
         
-        # print(binary_rep)
         # reverse the binary representation
         binary_rep = binary_rep[::-1]
         # Apply X gates on qubits where binary_rep is '1'
@@ -113,8 +106,6 @@ def comparision_oracle(idx_qubits, oracale_qubits,marked_elements):
         oracle.barrier()
 
     oracle.barrier()
-    # print("Compasion Oracle circuit:")
-    # print(oracle)
     return oracle
 
 def oracle(n, solution_indices)->QuantumCircuit:
@@ -146,11 +137,9 @@ def oracle(n, solution_indices)->QuantumCircuit:
         oracle.barrier()
 
     # oracle.barrier()
-    # print("Oracle circuit:")
-    # print(oracle)
     return oracle
 
-def grover_algorithm(qubits, idx_qubits, k, A_circuit, grover_circuit):
+def grover_algorithm(qubits, idx_qubits, k, A_circuit, grover_circuit)->str:
     """Implement the Grover's algorithm for element distinctness problem"""
     # Creating the main circuit
     circuit=QuantumCircuit(qubits, idx_qubits)
@@ -163,25 +152,20 @@ def grover_algorithm(qubits, idx_qubits, k, A_circuit, grover_circuit):
     # measurement
     circuit.measure(range(idx_qubits), range(idx_qubits))
 
-    # circuit.draw()
-
     # Running the circuit
     qasm_simulator = Aer.get_backend("qasm_simulator")
     transpiled_circuit = transpile(circuit, qasm_simulator)
     qobj = assemble(transpiled_circuit, shots=NUM_SHOTS)
     result = qasm_simulator.run(qobj).result()
     counts = result.get_counts()
-    # print(counts)
 
     # Return the most probable state
     return max(counts, key=counts.get)
 
 def element_distinctness_quantum(array)->(bool, int):
     """Check for the duplicates in the array using Grover's algorithm for element distinctness problem"""
-    # print("Running the test for the element distinctness problem")
     N:int = len(array)
     np.random.shuffle(array)
-    # print(f"Initial Array: {array}")
 
     # Pick random sqrt(N) elements
     RootN:int = int(np.sqrt(N))
@@ -224,7 +208,6 @@ def element_distinctness_quantum(array)->(bool, int):
         # print(f"Duplicate Index returned: {result}")
         result_idx = int(result, 2)
         try:
-            # print(f"Duplicate element: {remaining[result_idx]}")
             if remaining[result_idx] in marked:
 
                 # print(f"Duplicate element is correct, elements in the array are not distinct")
@@ -232,7 +215,6 @@ def element_distinctness_quantum(array)->(bool, int):
                 return False, no_of_calls
                 
         except IndexError:
-            # print(f"Index out of bound",end=" ")
             pass
 
         except Exception as e:
