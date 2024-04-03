@@ -163,7 +163,7 @@ def element_distinctness_classical(array:list[int])->bool:
 
 def simulate_test()->(bool, int):
     """Simulate the test for element distinctness problem"""
-    array=np.random.randint(ARRAY_SIZE**2, size=ARRAY_SIZE)
+    array=np.random.randint(ARRAY_SIZE, size=ARRAY_SIZE)
     tot_calls:int = 0
     res:bool = False
     # Run the Grover's algorithm N^0.25 times to minimize the error probability
