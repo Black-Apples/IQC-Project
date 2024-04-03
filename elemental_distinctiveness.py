@@ -92,10 +92,9 @@ def grover_algorithm(n, k, A_circuit, grover_circuit):
     # Return the most probable state
     return max(counts, key=counts.get)
 
-def simulate_test()->(bool, int):
-    """Simulate the test for the element distinctness problem"""
+def element_distinctness_quantum(array)->(bool, int):
+    """Check for the duplicates in the array using Grover's algorithm for element distinctness problem"""
     # print("Running the test for the element distinctness problem")
-    array=np.random.randint(ARRAY_SIZE**2, size=ARRAY_SIZE)
     N:int = len(array)
     np.random.shuffle(array)
     # print(f"Initial Array: {array}")
@@ -143,7 +142,7 @@ def simulate_test()->(bool, int):
 
                 # print(f"Duplicate element is correct, elements in the array are not distinct")
                 # print(f"Number of calls made to the oracle: {no_of_calls}")
-                return True, no_of_calls
+                return False, no_of_calls
                 
         except IndexError:
             # print(f"Index out of bound",end=" ")
@@ -154,17 +153,38 @@ def simulate_test()->(bool, int):
         # print(f"Duplicate element is incorrect")
         m = lambda_ * m
 
-    return False, no_of_calls
+    return True, no_of_calls
+
+def element_distinctness_classical(array:list[int])->bool:
+    """Checks for duplicates in the array using classical approach"""
+    if len(array) == len(set(array)):
+        return True
+    return False
+
+def simulate_test()->(bool, int):
+    """Simulate the test for element distinctness problem"""
+    array=np.random.randint(ARRAY_SIZE**2, size=ARRAY_SIZE)
+    tot_calls:int = 0
+    res:bool = False
+    # Run the Grover's algorithm N^0.25 times to minimize the error probability
+    for _ in range(int(np.ceil(np.power(ARRAY_SIZE, 0.25)))):
+        res, calls = element_distinctness_quantum(array)
+        tot_calls += calls
+        if res:
+            break
+    # Confirm the result using classical approach
+    actual_res:bool = element_distinctness_classical(array)
+    return res == actual_res, tot_calls
 
 if __name__ == "__main__":
     num_calls:list[int] = []
-    duplicate_array_cnt:int = 0
+    error_cnt:int = 0
     for _ in tqdm(range(TEST_ITERATIONS), desc="Running test iterations"):
         result, calls = simulate_test()
         num_calls.append(calls)
-        if result:
-            duplicate_array_cnt += 1
+        if not result:
+            error_cnt += 1
 
-    print(f"Number of duplicate arrays found: {duplicate_array_cnt}")
+    print(f"Fraction of incorrect classifications: {error_cnt/TEST_ITERATIONS}")
     print(f"Average number of calls made to the oracle: {np.mean(num_calls)}")
     
