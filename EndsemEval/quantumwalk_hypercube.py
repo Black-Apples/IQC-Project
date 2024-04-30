@@ -3,13 +3,20 @@ from qiskit import QuantumCircuit, execute, Aer, QuantumRegister, ClassicalRegis
 from qiskit.visualization import *
 from qiskit.circuit.library import QFT
 
-one_step_circuit = QuantumCircuit(6, name=' ONE STEP') 
-# Coin operator
-one_step_circuit.h([4,5])
-one_step_circuit.z([4,5])
-one_step_circuit.cz(4,5)
-one_step_circuit.h([4,5])
+# Add the inverse fourier transform and the fourier transform gates
+inv_qft_gate = QFT(4, inverse=True).to_instruction()  
+qft_gate = QFT(4, inverse=False).to_instruction()
 
+def get_step_circuit():
+
+    circuit = QuantumCircuit(6, name=' ONE STEP') 
+    # Coin operator
+    circuit.h([4,5])
+    circuit.z([4,5])
+    circuit.cz(4,5)
+    circuit.h([4,5])
+
+    return circuit
 
 def shift_operator(circuit):
     for i in range(0,4):
@@ -18,75 +25,78 @@ def shift_operator(circuit):
             circuit.x(5)
         circuit.ccx(4,5,i)
 
+def phase_oracle_hardcoded():
+
+    phase_circuit =  QuantumCircuit(6, name=' phase oracle ')
+    # Mark 1011
+    phase_circuit.x(2)
+    phase_circuit.h(3)
+    phase_circuit.mcx([0,1,2], 3)
+    phase_circuit.h(3)
+    phase_circuit.x(2)
+    # Mark 1111
+    phase_circuit.h(3)
+    phase_circuit.mcx([0,1,2],3)
+    phase_circuit.h(3)
+    phase_oracle_gate = phase_circuit.to_instruction()
+
+    return phase_oracle_gate
+
+def get_phase_estimation_gate(cont_one_step, inv_cont_one_step):
+    # Phase estimation
+    phase_estimation_circuit = QuantumCircuit(11, name=' phase estimation ')
+    phase_estimation_circuit.h([0,1,2,3])
+    for i in range(0,4):
+        stop = 2**i
+        for j in range(0,stop):
+            phase_estimation_circuit.append(cont_one_step, [i,4,5,6,7,8,9])
+
+    # Inverse fourier transform
+    phase_estimation_circuit.append(inv_qft_gate, [0,1,2,3])
+
+    # Mark all angles theta that are not 0 with an auxiliary qubit
+    phase_estimation_circuit.append(mark_auxiliary_gate, [0,1,2,3,10])
+
+    # Reverse phase estimation
+    phase_estimation_circuit.append(qft_gate, [0,1,2,3])   
+
+    for i in range(3,-1,-1):
+        stop = 2**i
+        for j in range(0,stop):
+            phase_estimation_circuit.append(inv_cont_one_step, [i,4,5,6,7,8,9])
+    phase_estimation_circuit.barrier(range(0,10))
+    phase_estimation_circuit.h([0,1,2,3])
+
+    # Make phase estimation gate
+    phase_estimation_gate = phase_estimation_circuit.to_instruction()
+
+    return phase_estimation_gate    
+
+
+def get_auxillary_marking_gate():
+
+    mark_auxiliary_circuit = QuantumCircuit(5, name=' mark auxiliary ')
+    mark_auxiliary_circuit.x([0,1,2,3,4])
+    mark_auxiliary_circuit.mcx([0,1,2,3], 4)
+    mark_auxiliary_circuit.z(4)
+    mark_auxiliary_circuit.mcx([0,1,2,3], 4)
+    mark_auxiliary_circuit.x([0,1,2,3,4])
+
+    mark_auxiliary_gate = mark_auxiliary_circuit.to_instruction()
+
+    return mark_auxiliary_gate
+
+# Adding the circuit for one step of the quantum walk
+one_step_circuit = get_step_circuit()
 shift_operator(one_step_circuit)
 
-one_step_gate = one_step_circuit.to_instruction() 
-
-# Make controlled gates
+# Make controlled versions of the one step circuit
 inv_cont_one_step = one_step_circuit.inverse().control()
-inv_cont_one_step_gate = inv_cont_one_step.to_instruction()
 cont_one_step = one_step_circuit.control()
-cont_one_step_gate = cont_one_step.to_instruction()
 
-
-inv_qft_gate = QFT(4, inverse=True).to_instruction()  
-qft_gate = QFT(4, inverse=False).to_instruction()
-
-
-phase_circuit =  QuantumCircuit(6, name=' phase oracle ')
-# Mark 1011
-phase_circuit.x(2)
-phase_circuit.h(3)
-phase_circuit.mcx([0,1,2], 3)
-phase_circuit.h(3)
-phase_circuit.x(2)
-# Mark 1111
-phase_circuit.h(3)
-phase_circuit.mcx([0,1,2],3)
-phase_circuit.h(3)
-phase_oracle_gate = phase_circuit.to_instruction()
-# Phase oracle circuit
-phase_oracle_circuit =  QuantumCircuit(11, name=' PHASE ORACLE CIRCUIT ')
-phase_oracle_circuit.append(phase_oracle_gate, [4,5,6,7,8,9])
-
-
-mark_auxiliary_circuit = QuantumCircuit(5, name=' mark auxiliary ')
-mark_auxiliary_circuit.x([0,1,2,3,4])
-mark_auxiliary_circuit.mcx([0,1,2,3], 4)
-mark_auxiliary_circuit.z(4)
-mark_auxiliary_circuit.mcx([0,1,2,3], 4)
-mark_auxiliary_circuit.x([0,1,2,3,4])
-
-mark_auxiliary_gate = mark_auxiliary_circuit.to_instruction()
-
-
-
-# Phase estimation
-phase_estimation_circuit = QuantumCircuit(11, name=' phase estimation ')
-phase_estimation_circuit.h([0,1,2,3])
-for i in range(0,4):
-    stop = 2**i
-    for j in range(0,stop):
-        phase_estimation_circuit.append(cont_one_step, [i,4,5,6,7,8,9])
-
-# Inverse fourier transform
-phase_estimation_circuit.append(inv_qft_gate, [0,1,2,3])
-
-# Mark all angles theta that are not 0 with an auxiliary qubit
-phase_estimation_circuit.append(mark_auxiliary_gate, [0,1,2,3,10])
-
-# Reverse phase estimation
-phase_estimation_circuit.append(qft_gate, [0,1,2,3])   
-
-for i in range(3,-1,-1):
-    stop = 2**i
-    for j in range(0,stop):
-        phase_estimation_circuit.append(inv_cont_one_step, [i,4,5,6,7,8,9])
-phase_estimation_circuit.barrier(range(0,10))
-phase_estimation_circuit.h([0,1,2,3])
-
-# Make phase estimation gate
-phase_estimation_gate = phase_estimation_circuit.to_instruction()
+phase_oracle_gate = phase_oracle_hardcoded()
+mark_auxiliary_gate = get_auxillary_marking_gate()
+phase_estimation_gate = get_phase_estimation_gate(cont_one_step, inv_cont_one_step)
 
 
 
